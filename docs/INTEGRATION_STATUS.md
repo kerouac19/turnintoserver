@@ -10,6 +10,7 @@
 - 协调现有快捷键、MCP 引起的电源变化、合盖、睡眠、唤醒和退出；重复的开盖读数不会结束清洁。异步调暗后发现已开盖会补做亮度恢复。
 - 打包用户级 LaunchAgent，持久记录电源和亮度恢复租约；不将其他来源的 `SleepDisabled` 状态直接接管为本应用 Server Mode。心跳首次失联后停止续租，旧请求不能干扰新会话；持有租约时避免 App Nap 导致误判。
 - 本地构建/测试脚本及第三方来源、许可证记录。
+- 独立 Release 构建、版本/build 参数、ad-hoc / Developer ID 模式、LaunchAgent 与签名校验、公证与票据装订脚本、ZIP / SHA-256，以及接收者安装文档。命令见 [RELEASING.md](../RELEASING.md)。
 
 ## 验证方式
 
@@ -24,7 +25,10 @@
 | 产物架构 / 最低系统版本 | arm64 / macOS 13.0 |
 | 包结构及 ad-hoc 签名完整性 | 通过 `codesign --verify --deep --strict`；LaunchAgent 与源文件一致 |
 | 现有 MCP 入口 | 无 GUI 的 `initialize` 请求通过，未调用工具或连接运行中的 App |
+| 用户实机试用 | 用户确认“已运行，功能正常”；具体功能清单、系统版本及异常恢复场景尚未逐项记录 |
 | 差异格式 | `git diff --check` 通过 |
+
+分发流程补齐后的验证：新增 11 项分发测试及原有 80 项检查均通过。已生成 `dist/turnintoserver-dev-0.1.0-b1-arm64-adhoc.zip`，完成 Release 编译、包结构与 entitlements 检查、SHA-256、解压后签名校验及 MCP 初始化（版本 `0.1.0 (1)`）。这是未经公证的测试包；未替换原 `build-dev/` 产物。Developer ID 签名、真实公证与接收端首次安装仍待证书、凭据和另一台 Mac 验证。方案和证据见 [分发方案](DISTRIBUTION_PLAN.md) 与 [Apple 官方资料核查](DISTRIBUTION_SIGNING_RESEARCH.md)。
 
 在当前受限执行环境中构建：
 
@@ -40,9 +44,11 @@ COMPILER_SUBPROCESS_SANDBOX=NO ./scripts/build-dev.sh
 SIGN_IDENTITY='Your stable code-signing identity' ./scripts/build-dev.sh --signed
 ```
 
-当前执行环境没有找到有效的代码签名身份。本地 ad-hoc 签名可验证编译、包结构和签名完整性，但不能替代固定签名的辅助功能/后台项验收。本次仅运行了无 GUI 的 MCP 初始化检查，没有启动菜单栏 App，没有改变真实显示器、输入拦截、sudoers、电源状态或后台项注册。
+自动化执行环境没有找到有效的代码签名身份。本地 ad-hoc 签名可验证编译、包结构和签名完整性，但不能替代固定签名的辅助功能/后台项验收。代理执行的检查仅运行了无 GUI 的 MCP 初始化，没有启动菜单栏 App，没有改变真实显示器、输入拦截、sudoers、电源状态或后台项注册。用户随后已实际运行开发包，并反馈功能正常。
 
 ## 尚待真机验收
+
+实际启动和用户已试用的功能已获得正向确认；以下专项仍需逐项验收，用户的总体反馈不作为这些场景全部通过的记录。
 
 - 固定证书签名、重新构建后辅助功能授权保持、后台项注册/拒绝、看护就绪与 sudo 授权建立/撤销。
 - 单屏/多屏、切换时热插拔、移除最后屏、合盖状态变化、全屏/Spaces 中两种遮罩及权限丢失。

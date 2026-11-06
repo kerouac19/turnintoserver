@@ -1,5 +1,7 @@
 # turnintoserver
 
+> Integrated development version for Apple Silicon and macOS 13+. Includes external display control, cleaning mode, and a power recovery guard. See [integration status](docs/INTEGRATION_STATUS.md), [build and release instructions](RELEASING.md), and [installation instructions](INSTALL.md).
+
 [中文](README.md) · [Product page](https://qianyushi.github.io/turnintoserver/)
 
 <p>
@@ -18,6 +20,8 @@ I built it because I wanted to use a MacBook as a small temporary server. Most k
 
 ## Main Features
 
+- Controls external displays while protecting the last usable display.
+- Offers black or transparent cleaning overlays, with five consecutive Esc presses or an Unlock button to exit.
 - Keeps the Mac running after the lid is closed.
 - Sets the built-in display to zero brightness when the lid closes.
 - Does not intentionally turn off external monitors.
@@ -42,18 +46,9 @@ I built it because I wanted to use a MacBook as a small temporary server. Most k
 
 ## Install
 
-Download the latest version:
+Use the ZIP supplied by this integration's distributor. Upstream packages do not contain these additional features. Builders can follow [RELEASING.md](RELEASING.md); local packages are generated in `dist/`.
 
-https://github.com/QianYushi/turnintoserver/releases/latest
-
-Then:
-
-1. Open `turnintoserver.dmg`.
-2. Drag `turnintoserver.app` into Applications.
-3. Launch `turnintoserver`.
-4. Turn on Server Mode from the menu bar.
-
-The first time you enable it, macOS may ask for an administrator password. This allows the system to keep running after the lid is closed.
+Unzip the package, move `turnintoserver.app` to Applications, then open the menu bar app. Follow the first-use prompts for Accessibility, the background power guard, and administrator permission. See [INSTALL.md](INSTALL.md) for installation, update, and signing status details.
 
 ## Use
 
@@ -70,7 +65,7 @@ The main controls are:
 - `Enable Automatic Routing`: independently watches two configurable macOS network services. When the app detects both as online, the current internal CIDR list uses the first Internal Route Egress while all other traffic keeps following the macOS default route. It is independent of Server Mode. The right-side Settings button lets users select both services and provide an optional per-service substring from the `ipconfig` summary (such as a DNS address or IP); an empty signature checks link status only. The same window maintains one IPv4 CIDR per line with `/8`, `/16`, `/24`, or `/32`. A first install shows only Wi-Fi, Ethernet, and three generic CIDR examples. An overwrite install keeps reading access points, signatures, and CIDRs already saved under the same bundle identifier instead of replacing them with examples. Saving cleans managed routes from a retired egress and immediately reconciles the new configuration. Hover shows the actual configured service names and app-detected states, current route coverage, and default egress.
 - `Mute When Enabled`: mutes audio while Server Mode is actually active, then restores the previous mute state when Server Mode stops or this option is disabled.
 - `Sleep`: temporarily releases Server Mode assertions and immediately puts the Mac to sleep; after wake, the previous Server Mode intent is restored.
-- `About turnintoserver`: shows the version, developer, GitHub URL, and update checker.
+- `About turnintoserver`: shows the version, developer, and GitHub URL. Upstream updates are disabled in this integration.
 - `Quit`: restores the default sleep behavior before quitting.
 
 For normal use, turn on Server Mode and close the lid.
@@ -81,7 +76,7 @@ If battery mode is off, unplugging power pauses Server Mode. Plugging power back
 
 Low battery alerts need an iMessage or Bark channel from the Set Up button beside Low Battery Alerts, and the configured channels must test successfully before the switch can be enabled. Configure one channel to send through that channel, or configure both to send through both. The first iMessage send may ask macOS for permission to let `turnintoserver` control Messages; allow it. Bark accepts a push URL such as `https://api.day.app/your-key`.
 
-The app checks for updates every 24 hours. When a new version is found, it downloads and validates the DMG automatically. Once ready, the menu offers “Update is ready. Restart now?”, and the About window can also restart the app to finish the replacement install.
+Upstream automatic updates are disabled in this integration. Install updates manually from a new integration ZIP. Before replacing the app, turn Server Mode off, wait for recovery to finish, then quit.
 
 ## About The Display
 

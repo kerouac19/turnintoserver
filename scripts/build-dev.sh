@@ -15,5 +15,5 @@ xcodebuild -project turnintoserver.xcodeproj -scheme turnintoserver -configurati
   -destination 'generic/platform=macOS' -derivedDataPath "$BUILD_ROOT" \
   -disableAutomaticPackageResolution ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
   "CODE_SIGN_IDENTITY=${SIGN_IDENTITY:--}" CODE_SIGN_STYLE=Manual \
-  "${extra_flags[@]}" build
+  ${extra_flags[@]+"${extra_flags[@]}"} build
 echo "App: $BUILD_ROOT/Build/Products/Debug/turnintoserver.app"

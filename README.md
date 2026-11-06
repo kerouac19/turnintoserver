@@ -2,6 +2,8 @@
 
 > 开发整合分支：仅面向 Apple Silicon、macOS 13+。已加入外接屏控制、清洁模式及独立电源看护。构建、测试与尚待真机验收的项目见 [整合状态](docs/INTEGRATION_STATUS.md)，第三方来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
+构建与公证分发见 [RELEASING.md](RELEASING.md)，接收者安装与更新说明见 [INSTALL.md](INSTALL.md)。
+
 [English](README.en.md) · [产品页面](https://qianyushi.github.io/turnintoserver/)
 
 <p>
@@ -46,18 +48,9 @@ Mac 继续工作。
 
 ## 安装
 
-下载最新版：
+使用本整合版提供者发布的 ZIP；上游安装包不包含这里新增的功能。发布者可按 [RELEASING.md](RELEASING.md) 生成带版本和架构的 ZIP，本地构建产物在 `dist/`。
 
-https://github.com/QianYushi/turnintoserver/releases/latest
-
-然后：
-
-1. 打开 `turnintoserver.dmg`。
-2. 把 `turnintoserver.app` 拖到“应用程序”。
-3. 启动 `turnintoserver`。
-4. 在菜单栏里打开 Server Mode。
-
-第一次开启时，macOS 可能会要求输入管理员密码。这是为了允许系统在合盖后继续运行。
+解压后把 `turnintoserver.app` 拖到“应用程序”，再启动菜单栏 App。首次使用按提示授予清洁模式的辅助功能权限、Server Mode 的后台项和管理员授权。完整步骤及签名状态说明见 [INSTALL.md](INSTALL.md)。
 
 ## 使用
 
@@ -74,7 +67,7 @@ https://github.com/QianYushi/turnintoserver/releases/latest
 - `打开自动路由表`：独立监听两个可维护的 macOS 网络服务；两者同时被 App 检测为在线时，当前内网 CIDR 列表走第一个“内网路由出口”，其他流量仍使用 macOS 默认出口。它不受 Server Mode 开关控制。右侧“设置”可选择两个网络服务，并为每端填写可选的 `ipconfig` 摘要识别特征（如 DNS 或 IP）；留空则只判断链路在线。同一窗口也可按一行一条维护 IPv4 CIDR，支持 `/8`、`/16`、`/24`、`/32`。首次安装仅显示 Wi-Fi、Ethernet 和 3 条通用 CIDR 示例；覆盖安装会继续读取同一 Bundle ID 下已经保存的接入点、识别特征和 CIDR，不会用示例覆盖历史输入。保存后会清理旧出口上的 App 托管路由，并按新配置重新对齐；鼠标悬停会显示 App 实时检测到的实际接入点名称、状态、当前路由覆盖数和默认出口。
 - `开启时静音`：Server Mode 实际开启时静音；关闭 Server Mode 或取消该选项时恢复开启前的静音状态。
 - `睡眠`：临时释放 Server Mode 的保活状态并让 Mac 立即睡眠；唤醒后按原来的 Server Mode 意图自动恢复。
-- `关于应用`：查看版本、开发者、GitHub 地址并检查更新。
+- `关于应用`：查看版本、开发者及 GitHub 地址；当前整合版禁用上游更新。
 - `退出`：退出前恢复系统默认睡眠行为。
 
 一般情况下，打开 Server Mode，然后合盖就可以了。
@@ -85,7 +78,7 @@ https://github.com/QianYushi/turnintoserver/releases/latest
 
 低电量提醒需要先在菜单中点击“推送低电量通知”右侧的“设置”，配置 iMessage 或 Bark，并测试成功后才能开启。只填写一个通道就只推送一个；两个都填写时会同时推送。iMessage 首次发送时，macOS 会询问是否允许 `turnintoserver` 控制 Messages，请选择允许。Bark 支持填写类似 `https://api.day.app/你的key` 的推送地址。
 
-App 每 24 小时自动检查一次更新；发现新版本后会自动下载并校验 DMG。更新准备好时，菜单底部会出现“更新已经就绪，是否立即重启？”，也可以在“关于应用”中点击“重新启动应用”完成替换安装。
+当前整合版禁用上游自动更新，使用新的整合版 ZIP 手动更新。替换 App 前先关闭 Server Mode，等待恢复完成并退出，再覆盖安装。
 
 ## 关于屏幕
 

@@ -1,4 +1,8 @@
 build-dev/
+build-release/
+dist/
+.release.env
+__pycache__/
 .local-signing/
 *.xcuserstate
 xcuserdata/
