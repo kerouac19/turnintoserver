@@ -1,0 +1,82 @@
+.gitignore
+  h_af5fc21353744c 1-5
+Licenses/Unplug-MIT.txt
+  h_af5fc21353744c 1-21
+Licenses/Vorssaint-GPL-3.0.txt
+  h_af5fc21353744c 1-674
+README.en.md
+  h_af5fc21353744c 100-101
+README.md
+  h_af5fc21353744c 3-4,23-24,104-105
+THIRD_PARTY_NOTICES.md
+  h_af5fc21353744c 1-24
+Tests/IntegrationTests.swift
+  h_af5fc21353744c 1-275
+docs/INTEGRATION_STATUS.md
+  h_af5fc21353744c 1-52
+docs/POWER_SESSION_GUARD.md
+  h_af5fc21353744c 1-25
+scripts/build-dev.sh
+  h_af5fc21353744c 1-19
+scripts/test.sh
+  h_af5fc21353744c 1-20
+turnintoserver.xcodeproj/project.pbxproj
+  h_af5fc21353744c 26-38,61-73,76-86,109-121,162,223-234,305-306,360-361,388,415
+turnintoserver/AboutWindowController.swift
+  h_af5fc21353744c 1407,1419-1422,1429-1432,1437-1440,1632
+turnintoserver/AppIdentity.swift
+  h_af5fc21353744c 1-52
+turnintoserver/AppState.swift
+  h_af5fc21353744c 8-14,266-269,746-749,1083,1104,1112,1205,1339-1344,1347,1389,1404,1433-1434,1439,1465,1516-1529,1556-1557,1691,1693-1697,1713,1715-1720,1755-1767,1813
+turnintoserver/AutomationManagers.swift
+  h_af5fc21353744c 373,375-376,385-386,388,390-392,469-478,480-487,536,706-708,739,742,753-761,772,781,836,838,849,851,874,898,900,934,949,954,962,964
+turnintoserver/BuiltInDisplayDimmer.swift
+  h_af5fc21353744c 2,22-53
+turnintoserver/CleaningMode/CleaningHealthMonitor.swift
+  h_af5fc21353744c 1-33
+turnintoserver/CleaningMode/CleaningModeManager.swift
+  h_af5fc21353744c 1-458
+turnintoserver/CleaningMode/CleaningMouseReleaseGate.swift
+  h_af5fc21353744c 1-55
+turnintoserver/CleaningMode/CleaningSurface.swift
+  h_af5fc21353744c 1-52
+turnintoserver/CleaningMode/CleaningUnlockCounter.swift
+  h_af5fc21353744c 1-86
+turnintoserver/Display/DisplaySafetyPolicy.swift
+  h_af5fc21353744c 1-42
+turnintoserver/Display/ExternalDisplayManager.swift
+  h_af5fc21353744c 1-231
+turnintoserver/Info.plist
+  h_af5fc21353744c 6
+turnintoserver/MCPControlServer.swift
+  h_af5fc21353744c 91,101
+turnintoserver/MCPStdioServer.swift
+  h_af5fc21353744c 205,618
+turnintoserver/MemoryUsageMonitor.swift
+  h_af5fc21353744c 327
+turnintoserver/ModeCoordinator.swift
+  h_af5fc21353744c 1-144
+turnintoserver/PowerGuard/LeaseContactMonitor.swift
+  h_af5fc21353744c 1-58
+turnintoserver/PowerGuard/PowerLeaseEngine.swift
+  h_af5fc21353744c 1-126
+turnintoserver/PowerGuard/PowerSessionGuard.swift
+  h_af5fc21353744c 1-362
+turnintoserver/PowerGuard/com.local.macutils.turnintoserver.dev.power-guard.plist
+  h_af5fc21353744c 1-12
+turnintoserver/PowerManager.swift
+  h_af5fc21353744c 6,11-21,24,28-31,34,49-54,79-81,84-86,99,101-104,107,138
+turnintoserver/turnintoserverApp.swift
+  h_af5fc21353744c 10-17,35,55-56,71,78,84,98,340-342,379-380,389-396,674-738,763
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0aeafc9ed54c992424e6aab3bb3faf62e678b33",
+  "prompts": {},
+  "humans": {
+    "h_af5fc21353744c": {
+      "author": "kerouac19 <kerouac19@gmail.com>"
+    }
+  }
+}
