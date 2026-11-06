@@ -5,6 +5,13 @@ import ServiceManagement
 
 @MainActor
 final class AppState: ObservableObject {
+    var displayTransitionInProgress: Bool { isCommandRunning || isSystemSleepTransitionActive }
+    private var sleepObserver: NSObjectProtocol?
+    private var pendingSleepCleanup = false
+    private var reconcileAfterCommand = false
+    var isCleaningModeActive = false
+    var prepareForSystemTransition: (() -> Void)?
+
     private enum DefaultsKey {
         static let allowBatteryServerMode = "allowBatteryServerMode"
         static let lastCommandStatus = "lastCommandStatus"
@@ -256,9 +263,10 @@ final class AppState: ObservableObject {
         hotKeysEnabled = defaults.object(forKey: AppDefaultsKey.hotKeysEnabled) as? Bool ?? true
         let legacyAutomaticRoutePlist = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/LaunchAgents/com.qianyushi.dynamic-split-route.plist")
-        automaticRoutingEnabled = defaults.object(
-            forKey: AppDefaultsKey.automaticRoutingEnabled
-        ) as? Bool ?? FileManager.default.fileExists(atPath: legacyAutomaticRoutePlist.path)
+        automaticRoutingEnabled = AppIdentity.current.initialRoutingEnabled(
+            saved: defaults.object(forKey: AppDefaultsKey.automaticRoutingEnabled) as? Bool,
+            legacyExists: { FileManager.default.fileExists(atPath: legacyAutomaticRoutePlist.path) }
+        )
         muteWhenServerModeEnabled = defaults.object(
             forKey: AppDefaultsKey.muteWhenServerModeEnabled
         ) as? Bool ?? false
@@ -735,6 +743,10 @@ final class AppState: ObservableObject {
         }
 
         hasStarted = true
+        powerManager.onGuardFailure = { [weak self] message in
+            self?.serverModeActive = false
+            self?.lastCommandStatus = AppText.failure(message)
+        }
         startWakeObservers()
         startBatteryNotificationTimer()
         startTopMemoryAppsTimer()
@@ -1068,6 +1080,7 @@ final class AppState: ObservableObject {
     }
 
     func toggleServerMode() async {
+        guard !isCleaningModeActive else { return }
         guard !isCommandRunning else {
             lastCommandStatus = AppText.commandAlreadyRunning
             return
@@ -1088,6 +1101,7 @@ final class AppState: ObservableObject {
     }
 
     func sleepNow() async {
+        prepareForSystemTransition?()
         guard beginCommand(waitingStatus: AppText.preparingSystemSleep) else {
             return
         }
@@ -1095,7 +1109,7 @@ final class AppState: ObservableObject {
         let previousRequest = serverModeRequested
         isSystemSleepTransitionActive = true
 
-        if serverModeActive {
+        if serverModeActive || powerManager.hasPendingRecovery {
             let stopResult = await powerManager.restoreSleepSettings()
             applyStop(
                 stopResult,
@@ -1188,6 +1202,7 @@ final class AppState: ObservableObject {
     }
 
     func toggleBatteryServerMode() {
+        guard !isCleaningModeActive else { return }
         guard !isCommandRunning else {
             lastCommandStatus = AppText.commandAlreadyRunning
             return
@@ -1321,9 +1336,15 @@ final class AppState: ObservableObject {
 
         if serverModeActive {
             await stopServerMode(clearRequest: true)
+        } else if powerManager.hasPendingRecovery {
+            let result = await powerManager.restoreSleepSettings()
+            if case .failure(let message) = result {
+                lastCommandStatus = AppText.failure(message)
+                return false
+            }
         }
 
-        return !serverModeActive
+        return !serverModeActive && !powerManager.hasPendingRecovery
     }
 
     private func reconcileServerMode() async {
@@ -1365,6 +1386,7 @@ final class AppState: ObservableObject {
     }
 
     private func startServerMode(powerSource: PowerSource) async {
+        prepareForSystemTransition?()
         guard beginCommand(waitingStatus: AppText.waitingForAuthorizationToStart) else {
             return
         }
@@ -1379,6 +1401,7 @@ final class AppState: ObservableObject {
     }
 
     private func stopServerMode(clearRequest: Bool, successMessage: String? = nil) async {
+        prepareForSystemTransition?()
         guard beginCommand(waitingStatus: AppText.waitingForAuthorizationToStop) else {
             return
         }
@@ -1407,20 +1430,13 @@ final class AppState: ObservableObject {
     }
 
     private func refreshServerModeStatus() async {
-        let currentSource = await currentPowerSource()
-        let isSleepDisabled = await powerManager.detectSleepDisabled()
+        _ = await currentPowerSource()
+        let isSleepDisabled = powerManager.isServerModeActive
         let shouldRestoreRequestedMode = serverModeRequested
         serverModeActive = isSleepDisabled
         serverModeRequested = isSleepDisabled || shouldRestoreRequestedMode
 
-        if isSleepDisabled {
-            powerManager.adoptExistingServerMode(powerSource: currentSource)
-            lastCommandStatus = AppText.detectedServerModeEnabled
-
-            if !canRunServerMode(on: currentSource), !isCommandRunning {
-                await reconcileServerMode()
-            }
-        } else if shouldRestoreRequestedMode, !isCommandRunning {
+        if shouldRestoreRequestedMode, !isCommandRunning {
             await reconcileServerMode()
         }
 
@@ -1446,6 +1462,7 @@ final class AppState: ObservableObject {
     private func handlePowerSourceUpdate(_ newSource: PowerSource) {
         let oldSource = powerSource
         powerSource = newSource
+        if isCommandRunning { reconcileAfterCommand = true; return }
 
         guard !isSystemSleepTransitionActive,
               (serverModeRequested || serverModeActive),
@@ -1496,6 +1513,20 @@ final class AppState: ObservableObject {
         }
 
         let notificationCenter = NSWorkspace.shared.notificationCenter
+        sleepObserver = notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification,
+            object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.prepareForSystemTransition?()
+                self.isSystemSleepTransitionActive = true
+                if self.isCommandRunning { self.pendingSleepCleanup = true; return }
+                Task { @MainActor in
+                    if self.serverModeActive || self.powerManager.hasPendingRecovery {
+                        await self.stopServerMode(clearRequest: false)
+                    }
+                }
+            }
+        }
         wakeObserver = notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
             object: nil,
@@ -1522,9 +1553,8 @@ final class AppState: ObservableObject {
         systemSleepFallbackTask?.cancel()
         systemSleepFallbackTask = nil
 
-        guard (serverModeRequested || serverModeActive), !isCommandRunning else {
-            return
-        }
+        guard serverModeRequested || serverModeActive else { return }
+        if isCommandRunning { reconcileAfterCommand = true; return }
 
         _ = await currentPowerSource()
         await reconcileServerMode()
@@ -1658,8 +1688,13 @@ final class AppState: ObservableObject {
         }
 
         isBuiltInDisplayCommandRunning = true
-        let result = powerManager.dimBuiltInDisplayForClosedLid()
+        let result = await powerManager.dimBuiltInDisplayForClosedLid()
         isBuiltInDisplayCommandRunning = false
+        if lidState != .closed {
+            didHandleBuiltInDisplayForClosedLid = false
+            restoreBuiltInDisplayBrightnessIfNeeded()
+            return
+        }
 
         switch result {
         case .success(let message):
@@ -1675,21 +1710,14 @@ final class AppState: ObservableObject {
     }
 
     private func restoreBuiltInDisplayBrightnessIfNeeded() {
-        guard !isBuiltInDisplayCommandRunning else {
-            return
-        }
-
+        guard !isBuiltInDisplayCommandRunning else { return }
         isBuiltInDisplayCommandRunning = true
-        let result = powerManager.restoreBuiltInDisplayBrightness()
-        isBuiltInDisplayCommandRunning = false
-
-        switch result {
-        case .success(let message):
-            lastCommandStatus = message
-        case .userCancelled:
-            lastCommandStatus = AppText.builtInDisplayBrightnessRestoreCancelled
-        case .failure(let message):
-            lastCommandStatus = AppText.builtInDisplayBrightnessRestoreFailed(message)
+        Task { @MainActor in
+            let result = await powerManager.restoreBuiltInDisplayBrightness()
+            isBuiltInDisplayCommandRunning = false
+            if case .failure(let message) = result {
+                lastCommandStatus = AppText.builtInDisplayBrightnessRestoreFailed(message)
+            }
         }
     }
 
@@ -1724,6 +1752,19 @@ final class AppState: ObservableObject {
 
     private func finishCommand() {
         isCommandRunning = false
+        let needsFollowup = pendingSleepCleanup || reconcileAfterCommand
+        pendingSleepCleanup = false
+        reconcileAfterCommand = false
+        guard needsFollowup else { return }
+        Task { @MainActor in
+            if isSystemSleepTransitionActive {
+                if serverModeActive || powerManager.hasPendingRecovery {
+                    await stopServerMode(clearRequest: false)
+                }
+            } else {
+                await reconcileServerMode()
+            }
+        }
     }
 
     private func applyStart(_ result: PowerCommandResult) {
@@ -1769,6 +1810,7 @@ final class AppState: ObservableObject {
             }
             lastCommandStatus = AppText.userCancelledAuthorization
         case .failure(let message):
+            serverModeActive = powerManager.isServerModeActive
             if clearRequest {
                 serverModeRequested = previousRequest
             }

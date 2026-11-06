@@ -23,6 +23,19 @@
 		A1000000000000000000000E /* MCPStdioServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* MCPStdioServer.swift */; };
 		A1000000000000000000000F /* AutomationManagers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000018 /* AutomationManagers.swift */; };
 		A10000000000000000000010 /* update_installer.sh in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* update_installer.sh */; };
+		2131462CDE7061F5BC24081F /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41AF6185533744F1086554DE; };
+		3FB02BF52944858EBCE48E05 /* CleaningMode/CleaningModeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0645463AB0C7C8B3E471247; };
+		3B27D8F8163B907F9A425FFC /* CleaningMode/CleaningMouseReleaseGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C653982E4A13ED627E1B894; };
+		519BE71CA9FCCA98DD293A95 /* CleaningMode/CleaningSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84F824A369BF2DEB9D50E87; };
+		960F0584C176F0B871762548 /* CleaningMode/CleaningUnlockCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0031EBC953215D5F896A34E; };
+		FD0FDA1243AE6E1ABDCD24AA /* Display/DisplaySafetyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CB870394D8BBA0974DC4B3B; };
+		187638B6CCA42CADF953DC5B /* Display/ExternalDisplayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C446CD40FA58064167317CD; };
+		A6EFDA2206A0B59139F0CAD4 /* ModeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46FA522AD405C7DF8B38E8A; };
+		54F71A9DE035E3F0E7A00211 = {isa = PBXBuildFile; fileRef = 0356C9B4FA130164D6B0F34E; };
+		A4716D0886288D5DB8D09631 = {isa = PBXBuildFile; fileRef = 5FAD19967B0649B406E8126E; };
+		B00000000000000000000002 = {isa = PBXBuildFile; fileRef = B00000000000000000000001; };
+		28A84A262E81FDF8299509A8 = {isa = PBXBuildFile; fileRef = 9AF1FB5416AA943C7619A202; };
+		8EAE105ACEACE2F23F72D6D4 = {isa = PBXBuildFile; fileRef = 0A3CF8198BA9414FF8626893; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,7 +58,31 @@
 		A20000000000000000000017 /* MCPStdioServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPStdioServer.swift; sourceTree = "<group>"; };
 		A20000000000000000000018 /* AutomationManagers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationManagers.swift; sourceTree = "<group>"; };
 		A20000000000000000000019 /* update_installer.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = update_installer.sh; sourceTree = "<group>"; };
+		41AF6185533744F1086554DE = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppIdentity.swift"; sourceTree = "<group>"; };
+		B0645463AB0C7C8B3E471247 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CleaningMode/CleaningModeManager.swift"; sourceTree = "<group>"; };
+		5C653982E4A13ED627E1B894 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CleaningMode/CleaningMouseReleaseGate.swift"; sourceTree = "<group>"; };
+		C84F824A369BF2DEB9D50E87 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CleaningMode/CleaningSurface.swift"; sourceTree = "<group>"; };
+		C0031EBC953215D5F896A34E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CleaningMode/CleaningUnlockCounter.swift"; sourceTree = "<group>"; };
+		9CB870394D8BBA0974DC4B3B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Display/DisplaySafetyPolicy.swift"; sourceTree = "<group>"; };
+		6C446CD40FA58064167317CD = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Display/ExternalDisplayManager.swift"; sourceTree = "<group>"; };
+		F46FA522AD405C7DF8B38E8A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModeCoordinator.swift"; sourceTree = "<group>"; };
+		0356C9B4FA130164D6B0F34E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PowerGuard/PowerLeaseEngine.swift"; sourceTree = "<group>"; };
+		5FAD19967B0649B406E8126E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PowerGuard/PowerSessionGuard.swift"; sourceTree = "<group>"; };
+		B00000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "PowerGuard/com.local.macutils.turnintoserver.dev.power-guard.plist"; sourceTree = "<group>"; };
+		9AF1FB5416AA943C7619A202 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CleaningMode/CleaningHealthMonitor.swift"; sourceTree = "<group>"; };
+		0A3CF8198BA9414FF8626893 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PowerGuard/LeaseContactMonitor.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+        B00000000000000000000003 = {
+            isa = PBXCopyFilesBuildPhase;
+            buildActionMask = 2147483647;
+            dstPath = Contents/Library/LaunchAgents;
+            dstSubfolderSpec = 1;
+            files = (B00000000000000000000002,);
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A30000000000000000000001 /* Frameworks */ = {
@@ -69,6 +106,19 @@
 		A40000000000000000000002 /* turnintoserver */ = {
 			isa = PBXGroup;
 			children = (
+				0A3CF8198BA9414FF8626893,
+				9AF1FB5416AA943C7619A202,
+				B00000000000000000000001,
+				5FAD19967B0649B406E8126E,
+				0356C9B4FA130164D6B0F34E,
+				F46FA522AD405C7DF8B38E8A,
+				6C446CD40FA58064167317CD,
+				9CB870394D8BBA0974DC4B3B,
+				C0031EBC953215D5F896A34E,
+				C84F824A369BF2DEB9D50E87,
+				5C653982E4A13ED627E1B894,
+				B0645463AB0C7C8B3E471247,
+				41AF6185533744F1086554DE,
 				A20000000000000000000001 /* turnintoserverApp.swift */,
 				A20000000000000000000002 /* AppState.swift */,
 				A20000000000000000000003 /* PowerSourceMonitor.swift */,
@@ -109,6 +159,7 @@
 				A60000000000000000000001 /* Sources */,
 				A30000000000000000000001 /* Frameworks */,
 				A70000000000000000000001 /* Resources */,
+                B00000000000000000000003,
 			);
 			buildRules = (
 			);
@@ -169,6 +220,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8EAE105ACEACE2F23F72D6D4,
+				28A84A262E81FDF8299509A8,
+				A4716D0886288D5DB8D09631,
+				54F71A9DE035E3F0E7A00211,
+				A6EFDA2206A0B59139F0CAD4,
+				187638B6CCA42CADF953DC5B,
+				FD0FDA1243AE6E1ABDCD24AA,
+				960F0584C176F0B871762548,
+				519BE71CA9FCCA98DD293A95,
+				3B27D8F8163B907F9A425FFC,
+				3FB02BF52944858EBCE48E05,
+				2131462CDE7061F5BC24081F,
 				A10000000000000000000001 /* turnintoserverApp.swift in Sources */,
 				A10000000000000000000002 /* AppState.swift in Sources */,
 				A10000000000000000000003 /* PowerSourceMonitor.swift in Sources */,
@@ -239,7 +302,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				ARCHS = arm64;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -293,7 +357,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				ARCHS = arm64;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -320,7 +385,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.qianyushi.turnintoserver;
+				PRODUCT_BUNDLE_IDENTIFIER = com.local.macutils.turnintoserver.dev;
 				PRODUCT_NAME = turnintoserver;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = macosx;
@@ -347,7 +412,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.qianyushi.turnintoserver;
+				PRODUCT_BUNDLE_IDENTIFIER = com.local.macutils.turnintoserver.dev;
 				PRODUCT_NAME = turnintoserver;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = macosx;

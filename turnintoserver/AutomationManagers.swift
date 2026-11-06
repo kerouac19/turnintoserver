@@ -370,7 +370,10 @@ final class AutomaticRouteManager {
     private var isReconciling = false
     private var needsAnotherReconcile = false
     private var desiredEnabled = false
+    private let runCommand: (String, [String]) async throws -> ShellResult
     private let defaults: UserDefaults
+    private var ownership: RouteOwnership
+    private static let ownershipKey = "integration.ownedRoutes.v1"
     private var accessPoints: AutomaticRouteAccessPointConfiguration
     private var managedCIDRs: [AutomaticRoutePlan.CIDR]
     private var retiredManagedRouteKeys: Set<AutomaticRoutePlan.RouteKey>
@@ -379,9 +382,14 @@ final class AutomaticRouteManager {
     init(
         defaults: UserDefaults = .standard,
         initialCIDRs: [AutomaticRoutePlan.CIDR]? = nil,
-        initialAccessPoints: AutomaticRouteAccessPointConfiguration? = nil
+        initialAccessPoints: AutomaticRouteAccessPointConfiguration? = nil,
+        runCommand: @escaping (String, [String]) async throws -> ShellResult = { try await ShellRunner.run($0, arguments: $1) }
     ) {
+        self.runCommand = runCommand
         self.defaults = defaults
+        let stored = defaults.data(forKey: Self.ownershipKey)
+        let records = stored.flatMap { try? JSONDecoder().decode(Set<OwnedRoute>.self, from: $0) } ?? []
+        ownership = RouteOwnership(records: records)
         let configuredCIDRs = initialCIDRs ?? AutomaticRoutePlan.configuredCIDRs(defaults: defaults)
         let configuredAccessPoints = initialAccessPoints
             ?? AutomaticRouteAccessPointConfiguration.configured(defaults: defaults)
@@ -458,11 +466,25 @@ final class AutomaticRouteManager {
         AutomaticRoutePlan.verificationDestinations(for: managedCIDRs)
     }
 
-    private func isOwnedRoute(_ route: AutomaticRoutePlan.RouteKey) -> Bool {
-        managedRoutes.contains(route)
-            || retiredManagedRouteKeys.contains(route)
+    private func record(_ route: AdditionalRoute, service: String) -> OwnedRoute {
+        OwnedRoute(service: service, destination: route.destination, netmask: route.netmask, gateway: route.gateway)
+    }
+
+    private func isOwnedRoute(_ route: AdditionalRoute, service: String) -> Bool {
+        if !AppIdentity.current.allowsLegacyConfigurationMigration {
+            return ownership.owns(record(route, service: service))
+        }
+        return managedRoutes.contains(route.key)
+            || retiredManagedRouteKeys.contains(route.key)
             || (!defaults.bool(forKey: AppDefaultsKey.automaticRoutingLegacy196MigrationCompleted)
-                && AutomaticRoutePlan.isLegacyObsoleteRoute(route))
+                && AutomaticRoutePlan.isLegacyObsoleteRoute(route.key))
+    }
+
+    private func saveOwnership(_ routes: [AdditionalRoute], service: String) {
+        ownership.record(routes.map { record($0, service: service) }, on: service)
+        if let data = try? JSONEncoder().encode(ownership.records) {
+            defaults.set(data, forKey: Self.ownershipKey)
+        }
     }
 
     func setEnabled(_ isEnabled: Bool) async throws {
@@ -511,7 +533,7 @@ final class AutomaticRouteManager {
                 ? []
                 : try await additionalRoutes(serviceName: accessPoints.route.serviceName)
             let installedManagedRoutes = routes.filter {
-                isOwnedRoute($0.key)
+                isOwnedRoute($0, service: accessPoints.route.serviceName)
             }
 
             var routeGateway: String?
@@ -681,6 +703,9 @@ final class AutomaticRouteManager {
     }
 
     private func reconcileOnce(isEnabled: Bool) async throws {
+        if !isEnabled, !AppIdentity.current.allowsLegacyConfigurationMigration, ownership.records.isEmpty {
+            return
+        }
         let services = try await networkServices()
         try await removeManagedRoutesFromRetiredServices(availableServices: services)
 
@@ -711,10 +736,10 @@ final class AutomaticRouteManager {
             serviceName: accessPoints.route.serviceName
         )
         let preservedRoutes = currentRoutes.filter {
-            !isOwnedRoute($0.key)
+            !isOwnedRoute($0, service: accessPoints.route.serviceName)
         }
         let currentManagedRoutes = currentRoutes.filter {
-            isOwnedRoute($0.key)
+            isOwnedRoute($0, service: accessPoints.route.serviceName)
         }
 
         if let desiredGateway {
@@ -724,6 +749,15 @@ final class AutomaticRouteManager {
                     netmask: $0.netmask,
                     gateway: desiredGateway
                 )
+            }
+            if !AppIdentity.current.allowsLegacyConfigurationMigration {
+                let existing = currentRoutes.map { record($0, service: accessPoints.route.serviceName) }
+                if desiredRoutes.contains(where: {
+                    ownership.conflicts(with: record($0, service: accessPoints.route.serviceName), existing: existing)
+                }) {
+                    throw AutomaticRouteError.commandFailed(AppIdentity.text(
+                        "现有路由不属于此开发实例，已保留原配置", "Existing routes belong to another owner; configuration was preserved"))
+                }
             }
             guard currentManagedRoutes.count != desiredRoutes.count
                     || Set(currentManagedRoutes) != Set(desiredRoutes) else {
@@ -735,6 +769,7 @@ final class AutomaticRouteManager {
                 preservedRoutes + desiredRoutes,
                 serviceName: accessPoints.route.serviceName
             )
+            saveOwnership(desiredRoutes, service: accessPoints.route.serviceName)
             NSLog(
                 "turnintoserver automatic route enabled \(desiredRoutes.count) internal routes through \(desiredGateway) on \(routeService.device)"
             )
@@ -743,6 +778,7 @@ final class AutomaticRouteManager {
                 preservedRoutes,
                 serviceName: accessPoints.route.serviceName
             )
+            saveOwnership([], service: accessPoints.route.serviceName)
             NSLog("turnintoserver automatic route removed \(currentManagedRoutes.count) managed internal routes")
         }
 
@@ -797,9 +833,9 @@ final class AutomaticRouteManager {
         _ accessPoint: AutomaticRouteAccessPoint,
         service: AutomaticRouteNetworkService
     ) async throws -> Bool {
-        let summary = try await ShellRunner.run(
+        let summary = try await runCommand(
             "/usr/sbin/ipconfig",
-            arguments: ["getsummary", service.device]
+            ["getsummary", service.device]
         )
         return summary.exitCode == 0
             && summary.stdout.contains("LinkStatusActive : TRUE")
@@ -810,9 +846,9 @@ final class AutomaticRouteManager {
     }
 
     private func currentGateway(device: String) async throws -> String {
-        let result = try await ShellRunner.run(
+        let result = try await runCommand(
             "/sbin/route",
-            arguments: ["-n", "get", "-ifscope", device, "default"]
+            ["-n", "get", "-ifscope", device, "default"]
         )
         guard result.exitCode == 0 else {
             throw AutomaticRouteError.commandFailed(result.combinedOutput)
@@ -835,7 +871,7 @@ final class AutomaticRouteManager {
     }
 
     private func routeResolution(to destination: String) async throws -> RouteResolution {
-        let result = try await ShellRunner.run("/sbin/route", arguments: ["-n", "get", destination])
+        let result = try await runCommand("/sbin/route", ["-n", "get", destination])
         guard result.exitCode == 0 else {
             throw AutomaticRouteError.commandFailed(result.combinedOutput)
         }
@@ -859,9 +895,9 @@ final class AutomaticRouteManager {
     }
 
     private func additionalRoutes(serviceName: String) async throws -> [AdditionalRoute] {
-        let result = try await ShellRunner.run(
+        let result = try await runCommand(
             "/usr/sbin/networksetup",
-            arguments: ["-getadditionalroutes", serviceName]
+            ["-getadditionalroutes", serviceName]
         )
         guard result.exitCode == 0 else {
             throw AutomaticRouteError.commandFailed(result.combinedOutput)
@@ -895,7 +931,7 @@ final class AutomaticRouteManager {
             arguments.append(contentsOf: [route.destination, route.netmask, route.gateway])
         }
 
-        let result = try await ShellRunner.run("/usr/sbin/networksetup", arguments: arguments)
+        let result = try await runCommand("/usr/sbin/networksetup", arguments)
         guard result.exitCode == 0 else {
             throw AutomaticRouteError.commandFailed(result.combinedOutput)
         }
@@ -910,11 +946,12 @@ final class AutomaticRouteManager {
                 continue
             }
             let routes = try await additionalRoutes(serviceName: serviceName)
-            let preservedRoutes = routes.filter { !isOwnedRoute($0.key) }
+            let preservedRoutes = routes.filter { !isOwnedRoute($0, service: serviceName) }
             guard preservedRoutes.count != routes.count else {
                 continue
             }
             try await applyAdditionalRoutes(preservedRoutes, serviceName: serviceName)
+            saveOwnership([], service: serviceName)
             NSLog(
                 "turnintoserver automatic route removed \(routes.count - preservedRoutes.count) managed routes from retired service \(serviceName)"
             )
@@ -922,9 +959,9 @@ final class AutomaticRouteManager {
     }
 
     private func networkServices() async throws -> [AutomaticRouteNetworkService] {
-        let result = try await ShellRunner.run(
+        let result = try await runCommand(
             "/usr/sbin/networksetup",
-            arguments: ["-listnetworkserviceorder"]
+            ["-listnetworkserviceorder"]
         )
         guard result.exitCode == 0 else {
             throw AutomaticRouteError.commandFailed(result.combinedOutput)

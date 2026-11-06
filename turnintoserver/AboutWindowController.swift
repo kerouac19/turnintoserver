@@ -1404,7 +1404,7 @@ final class PreferencesUpdateViewModel: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        restorePreparedUpdateIfPossible()
+        if AppIdentity.current.updatesEnabled { restorePreparedUpdateIfPossible() }
     }
 
     deinit {
@@ -1416,16 +1416,28 @@ final class PreferencesUpdateViewModel: ObservableObject {
     }
 
     func checkForUpdates() {
+        guard AppIdentity.current.updatesEnabled else {
+            statusText = AppIdentity.text("开发版使用本地构建更新", "Use local builds to update the development app")
+            return
+        }
         Task {
             await checkForUpdatesAsync(isAutomatic: false)
         }
     }
 
     func startDailyAutomaticChecks() {
+        guard AppIdentity.current.updatesEnabled else {
+            statusText = AppIdentity.text("开发版使用本地构建更新", "Use local builds to update the development app")
+            return
+        }
         scheduleNextAutomaticCheck()
     }
 
     func restartAndInstall() {
+        guard AppIdentity.current.updatesEnabled else {
+            statusText = AppIdentity.text("开发版使用本地构建更新", "Use local builds to update the development app")
+            return
+        }
         guard !isInstalling else {
             return
         }
@@ -1617,13 +1629,7 @@ final class PreferencesUpdateViewModel: ObservableObject {
     }
 
     private static func updateStorageDirectory() throws -> URL {
-        let base = try FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        return base.appendingPathComponent("turnintoserver/Updates", isDirectory: true)
+        AppIdentity.supportDirectory.appendingPathComponent("Updates", isDirectory: true)
     }
 
     private static func preferredInstallTarget(for currentAppURL: URL) -> URL {

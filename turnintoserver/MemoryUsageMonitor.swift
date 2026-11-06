@@ -324,7 +324,7 @@ final class MemoryUsageHistoryStore {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        .appendingPathComponent("turnintoserver", isDirectory: true)
+        .appendingPathComponent(AppIdentity.current.supportDirectoryName, isDirectory: true)
 
         return directory.appendingPathComponent("memory-history-v1.plist")
     }

@@ -1,4 +1,5 @@
 import CoreGraphics
+import ColorSync
 import Darwin
 import Foundation
 
@@ -16,6 +17,38 @@ final class BuiltInDisplayDimmer {
 
     init() {
         services = Self.loadDisplayServices()
+    }
+
+    func captureRecords() throws -> [BrightnessRecord] {
+        guard let services else { throw PowerGuardFailure(message: AppText.builtInDisplayControlUnavailable) }
+        return try Self.onlineBuiltInDisplays().map { display in
+            var value: Float = 0
+            guard services.getBrightness(display, &value) == 0,
+                  let uuid = CGDisplayCreateUUIDFromDisplayID(display)?.takeRetainedValue() else {
+                throw PowerGuardFailure(message: "Cannot snapshot built-in display brightness")
+            }
+            return BrightnessRecord(uuid: CFUUIDCreateString(nil, uuid) as String, value: max(0, min(1, value)))
+        }
+    }
+
+    func applyRecords(_ records: [BrightnessRecord]) throws {
+        guard !records.isEmpty else { return }
+        guard let services else { throw PowerGuardFailure(message: AppText.builtInDisplayControlUnavailable) }
+        let displays = Self.onlineBuiltInDisplays()
+        for record in records {
+            guard record.value.isFinite, (0...1).contains(record.value),
+                  let display = displays.first(where: { id in
+                      guard let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue() else { return false }
+                      return CFUUIDCreateString(nil, uuid) as String == record.uuid
+                  }) else { throw PowerGuardFailure(message: "Built-in display is offline; brightness recovery remains pending") }
+            guard services.setBrightness(display, record.value) == 0 else {
+                throw PowerGuardFailure(message: "Could not change built-in brightness")
+            }
+            var actual: Float = 0
+            guard services.getBrightness(display, &actual) == 0, abs(actual - record.value) < 0.04 else {
+                throw PowerGuardFailure(message: "Brightness verification failed; recovery record retained")
+            }
+        }
     }
 
     func dimBuiltInDisplays() -> PowerCommandResult {

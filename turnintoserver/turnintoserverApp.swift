@@ -7,6 +7,14 @@ import Darwin
 enum TurnIntoServerMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--power-guard") {
+            do {
+                let server = try PowerSessionGuardServer()
+                withExtendedLifetime(server) { server.run() }
+            }
+            catch { NSLog("Power guard could not start: %@", error.localizedDescription) }
+            return
+        }
         if CommandLine.arguments.contains("--mcp-server") {
             MCPStdioServer().run()
             return
@@ -24,6 +32,7 @@ enum TurnIntoServerMain {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appState: AppState?
+    private var coordinator: ModeCoordinator?
     private var hotKeyManager: HotKeyManager?
     private var statusItemController: StatusItemController?
     private var mcpControlServer: MCPControlServer?
@@ -43,6 +52,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let state = AppState()
         appState = state
+        let coordinator = ModeCoordinator(state: state)
+        self.coordinator = coordinator
         hotKeyManager = HotKeyManager(
             onToggleServerMode: {
                 await state.toggleServerMode()
@@ -57,18 +68,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKeyManager?.start()
         let updateModel = PreferencesUpdateViewModel()
         self.updateModel = updateModel
-        statusItemController = StatusItemController(appState: state, updateModel: updateModel)
+        statusItemController = StatusItemController(appState: state, updateModel: updateModel, coordinator: coordinator)
         let controlServer = MCPControlServer(appState: state)
         mcpControlServer = controlServer
         controlServer.start()
         updateShortcutKeyEquivalentMenuItems()
         observeShortcutMenuItemChanges()
         observeUpdateInstallTerminationRequests()
+        coordinator.start()
         state.start()
         updateModel.startDailyAutomaticChecks()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        coordinator?.shutdown()
         if let hotKeysDidChangeObserver {
             NotificationCenter.default.removeObserver(hotKeysDidChangeObserver)
             self.hotKeysDidChangeObserver = nil
@@ -82,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        coordinator?.prepareForTransition()
         guard let appState else {
             return .terminateNow
         }
@@ -323,6 +337,9 @@ private final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private let appState: AppState
+    private let coordinator: ModeCoordinator
+    private weak var displayMenuItem: NSMenuItem?
+    private weak var integrationStatusItem: NSMenuItem?
     private let updateModel: PreferencesUpdateViewModel
     private let statusItem: NSStatusItem
     private let menu = NSMenu()
@@ -359,7 +376,8 @@ private final class StatusItemController: NSObject, NSMenuDelegate {
     private weak var sleepMenuItem: NSMenuItem?
     private weak var quitMenuItem: NSMenuItem?
 
-    init(appState: AppState, updateModel: PreferencesUpdateViewModel) {
+    init(appState: AppState, updateModel: PreferencesUpdateViewModel, coordinator: ModeCoordinator) {
+        self.coordinator = coordinator
         self.appState = appState
         self.updateModel = updateModel
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -368,6 +386,14 @@ private final class StatusItemController: NSObject, NSMenuDelegate {
         lastServerModeMemoryDefaultExpanded = appState.shouldShowMemoryUsageRows
         configureStatusItem()
         observeAppState()
+        coordinator.$displays.receive(on: RunLoop.main).sink { [weak self] _ in
+            guard let self else { return }
+            self.displayMenuItem?.submenu = self.makeDisplayMenu()
+        }.store(in: &cancellables)
+        coordinator.$status.receive(on: RunLoop.main).sink { [weak self] message in
+            self?.integrationStatusItem?.title = message ?? ""
+            self?.integrationStatusItem?.isHidden = message == nil
+        }.store(in: &cancellables)
         updateStatusButton()
         rebuildMenu()
     }
@@ -645,6 +671,71 @@ private final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
+    private func makeDisplayMenu() -> NSMenu {
+        let submenu = NSMenu()
+        submenu.autoenablesItems = false
+        let external = coordinator.displays.filter { !$0.builtin }
+        if external.isEmpty {
+            let item = NSMenuItem(title: AppIdentity.text("没有外接显示器", "No external displays"), action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            submenu.addItem(item)
+        }
+        let context = DisplaySafetyContext(lid: appState.lidState == .open ? .open : appState.lidState == .closed ? .closed : .unknown,
+            serverActive: appState.serverModeActive, transitioning: appState.displayTransitionInProgress)
+        for display in external {
+            let item = NSMenuItem(title: display.name, action: #selector(toggleExternalDisplay(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = NSNumber(value: display.id)
+            item.state = display.active ? .on : .off
+            item.isEnabled = !coordinator.cleaning.isActive && (!display.active || (!coordinator.isCheckingDisplays
+                && DisplaySafetyPolicy.canDisable(display.id, displays: coordinator.displays, context: context)))
+            submenu.addItem(item)
+        }
+        let retry = NSMenuItem(title: AppIdentity.text("刷新显示状态", "Refresh displays"), action: #selector(refreshDisplays), keyEquivalent: "")
+        retry.target = self
+        submenu.addItem(.separator())
+        submenu.addItem(retry)
+        return submenu
+    }
+
+    private func addIntegrationItems() {
+        let displays = NSMenuItem(title: AppIdentity.text("外接显示器", "External Displays"), action: nil, keyEquivalent: "")
+        displays.submenu = makeDisplayMenu()
+        menu.addItem(displays)
+        displayMenuItem = displays
+        let cleaning = NSMenuItem(title: AppIdentity.text("清洁模式", "Cleaning Mode"), action: nil, keyEquivalent: "")
+        let styles = NSMenu()
+        for (title, visible) in [(AppIdentity.text("黑屏并开始", "Start with black screen"), false),
+                                 (AppIdentity.text("保留画面并开始", "Start with screen visible"), true)] {
+            let row = NSMenuItem(title: title, action: #selector(startCleaning(_:)), keyEquivalent: "")
+            row.representedObject = NSNumber(value: visible)
+            row.target = self
+            row.isEnabled = !appState.isCommandRunning
+            styles.addItem(row)
+        }
+        cleaning.submenu = styles
+        menu.addItem(cleaning)
+        let status = NSMenuItem(title: coordinator.status ?? "", action: nil, keyEquivalent: "")
+        status.isEnabled = false
+        status.isHidden = coordinator.status == nil
+        menu.addItem(status)
+        integrationStatusItem = status
+        menu.addItem(.separator())
+    }
+
+    @objc private func toggleExternalDisplay(_ sender: NSMenuItem) {
+        guard let id = (sender.representedObject as? NSNumber)?.uint32Value,
+              let display = coordinator.displays.first(where: { $0.id == id }) else { return }
+        menu.cancelTracking()
+        coordinator.setDisplay(id, enabled: !display.active)
+    }
+    @objc private func refreshDisplays() { coordinator.scheduleRecheck() }
+    @objc private func startCleaning(_ sender: NSMenuItem) {
+        menu.cancelTracking()
+        let visible = (sender.representedObject as? NSNumber)?.boolValue ?? false
+        DispatchQueue.main.async { [weak self] in self?.coordinator.startCleaning(keepScreenVisible: visible) }
+    }
+
     private func rebuildMenu() {
         HighlightedMenuRowView.clearActiveHover()
         memoryTrendPanelController.hide()
@@ -669,6 +760,7 @@ private final class StatusItemController: NSObject, NSMenuDelegate {
         quitMenuItem = nil
 
         addHiddenShortcutMenuItems()
+        addIntegrationItems()
 
         let serverModeItem = NSMenuItem()
         let serverModeView = MenuActionRowView(

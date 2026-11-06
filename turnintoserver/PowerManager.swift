@@ -3,25 +3,35 @@ import IOKit.pwr_mgt
 
 @MainActor
 final class PowerManager {
+    var onGuardFailure: ((String) -> Void)?
     private var caffeinateProcess: Process?
     private var timedDisplayAwakeProcess: Process?
     private var timedUserActivityProcess: Process?
     private var timedUserActivityTimer: Timer?
-    private let builtInDisplayDimmer = BuiltInDisplayDimmer()
+    private let powerGuard = PowerSessionGuardClient()
+
+    init() {
+        powerGuard.onFailure = { [weak self] message in
+            self?.stopTimedDisplayAwake()
+            self?.stopCaffeinate()
+            self?.onGuardFailure?(message)
+        }
+    }
+
+    var hasPendingRecovery: Bool { powerGuard.hasSession }
 
     var isServerModeActive: Bool {
-        caffeinateProcess?.isRunning == true
+        caffeinateProcess?.isRunning == true && powerGuard.hasSession
     }
 
     func enableServerMode(powerSource: PowerSource) async -> PowerCommandResult {
-        let sleepDisableResult = await setSleepDisabled(true)
-        guard case .success = sleepDisableResult else {
-            return sleepDisableResult
-        }
-
+        let sleepDisableResult = await ensurePowerPermission()
+        guard case .success = sleepDisableResult else { return sleepDisableResult }
+        do { try await powerGuard.begin() }
+        catch { return .failure(error.localizedDescription) }
         let caffeinateResult = startCaffeinate(powerSource: powerSource)
         guard case .success = caffeinateResult else {
-            _ = await setSleepDisabled(false)
+            try? await powerGuard.restore()
             return caffeinateResult
         }
 
@@ -35,18 +45,15 @@ final class PowerManager {
         }
     }
 
-    func adoptExistingServerMode(powerSource: PowerSource) {
-        startCaffeinate(powerSource: powerSource)
-    }
-
     func restoreSleepSettings() async -> PowerCommandResult {
+        do { try await powerGuard.restore() }
+        catch {
+            stopTimedDisplayAwake()
+            stopCaffeinate()
+            return .failure(error.localizedDescription)
+        }
         stopTimedDisplayAwake()
         stopCaffeinate()
-
-        let result = await setSleepDisabled(false)
-        guard case .success = result else {
-            return result
-        }
 
         return .success(AppText.restoredClosedLidSleep)
     }
@@ -69,12 +76,14 @@ final class PowerManager {
         return .success(AppText.systemSleepRequested)
     }
 
-    func dimBuiltInDisplayForClosedLid() -> PowerCommandResult {
-        builtInDisplayDimmer.dimBuiltInDisplays()
+    func dimBuiltInDisplayForClosedLid() async -> PowerCommandResult {
+        do { try await powerGuard.dim(); return .success(AppText.builtInDisplayDimmed) }
+        catch { return .failure(error.localizedDescription) }
     }
 
-    func restoreBuiltInDisplayBrightness() -> PowerCommandResult {
-        builtInDisplayDimmer.restoreBuiltInDisplays()
+    func restoreBuiltInDisplayBrightness() async -> PowerCommandResult {
+        do { try await powerGuard.restoreBrightness(); return .success(AppText.builtInDisplayBrightnessRestored) }
+        catch { return .failure(error.localizedDescription) }
     }
 
     @discardableResult
@@ -87,50 +96,15 @@ final class PowerManager {
         return .success("OK")
     }
 
-    func detectSleepDisabled() async -> Bool {
+    private func ensurePowerPermission() async -> PowerCommandResult {
         do {
-            let result = try await ShellRunner.run("/usr/sbin/ioreg", arguments: ["-r", "-k", "SleepDisabled"])
-            return result.stdout.contains(#""SleepDisabled" = Yes"#)
-        } catch {
-            return false
-        }
-    }
-
-    private func setSleepDisabled(_ isDisabled: Bool) async -> PowerCommandResult {
-        let value = isDisabled ? "1" : "0"
-        let passwordlessResult = await runPasswordlessPmset(disablesleepValue: value)
-        if case .success = passwordlessResult {
-            return passwordlessResult
-        }
-
-        let authorizationResult = await installOneTimeAuthorization()
-        guard case .success = authorizationResult else {
-            return authorizationResult
-        }
-
-        let retryResult = await runPasswordlessPmset(disablesleepValue: value)
-        guard case .success = retryResult else {
-            return retryResult
-        }
-
-        return .success("OK")
-    }
-
-    private func runPasswordlessPmset(disablesleepValue value: String) async -> PowerCommandResult {
-        do {
-            let result = try await ShellRunner.runSudoNoPassword(
-                "/usr/bin/pmset",
-                arguments: ["disablesleep", value]
-            )
-
-            guard result.exitCode == 0 else {
-                return .failure(Self.shortFailureMessage(from: result))
+            for value in ["0", "1"] {
+                let result = try await ShellRunner.run("/usr/bin/sudo",
+                    arguments: ["-n", "-l", "/usr/bin/pmset", "disablesleep", value])
+                if result.exitCode != 0 { return await installOneTimeAuthorization() }
             }
-
             return .success("OK")
-        } catch {
-            return .failure(error.localizedDescription)
-        }
+        } catch { return .failure(error.localizedDescription) }
     }
 
     private func installOneTimeAuthorization() async -> PowerCommandResult {
@@ -161,7 +135,7 @@ final class PowerManager {
             throw PowerManagerError.unsupportedUserName
         }
 
-        let sudoersPath = "/private/etc/sudoers.d/turnintoserver"
+        let sudoersPath = "/private/etc/sudoers.d/\(AppIdentity.current.sudoersName)"
         let contents = """
         # turnintoserver one-time permission for Server Mode.
         \(userName) ALL=(root) NOPASSWD: /usr/bin/pmset disablesleep 0, /usr/bin/pmset disablesleep 1

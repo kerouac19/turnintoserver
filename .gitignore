@@ -1,0 +1,5 @@
+build-dev/
+.local-signing/
+*.xcuserstate
+xcuserdata/
+.DS_Store

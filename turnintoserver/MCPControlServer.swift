@@ -88,7 +88,7 @@ final class MCPControlServer {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        .appendingPathComponent("turnintoserver", isDirectory: true)
+        .appendingPathComponent(AppIdentity.current.supportDirectoryName, isDirectory: true)
 
         return directory.appendingPathComponent("mcp-control.sock").path
     }
@@ -98,7 +98,7 @@ final class MCPControlServer {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        .appendingPathComponent("turnintoserver", isDirectory: true)
+        .appendingPathComponent(AppIdentity.current.supportDirectoryName, isDirectory: true)
 
         return directory.appendingPathComponent("hermes-control.sock").path
     }

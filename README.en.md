@@ -97,8 +97,8 @@ Use it plugged in, on a desk, with normal airflow. Setting the built-in display 
 
 ## Requirements
 
-- Intel Mac: macOS 10.15 Catalina or later.
-- Apple Silicon Mac: macOS 11 Big Sur or later.
+- Apple Silicon Mac: macOS 13 Ventura or later.
+- This development integration builds arm64 only.
 - Plugged-in use is recommended.
 
 ## Note

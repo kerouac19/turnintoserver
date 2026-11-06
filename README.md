@@ -1,5 +1,7 @@
 # turnintoserver
 
+> 开发整合分支：仅面向 Apple Silicon、macOS 13+。已加入外接屏控制、清洁模式及独立电源看护。构建、测试与尚待真机验收的项目见 [整合状态](docs/INTEGRATION_STATUS.md)，第三方来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
 [English](README.en.md) · [产品页面](https://qianyushi.github.io/turnintoserver/)
 
 <p>
@@ -18,6 +20,8 @@ Mac 继续工作。
 
 ## 主要功能
 
+- 外接显示器独立开关，并保护最后一个可用显示输出。
+- 清洁模式：黑屏或保留画面，连续按 5 次 Esc 或点击解锁退出。
 - 合盖后保持 Mac 运行。
 - 合盖时把内建屏幕亮度降到 0。
 - 不主动关闭外接显示器。
@@ -97,8 +101,8 @@ App 每 24 小时自动检查一次更新；发现新版本后会自动下载并
 
 ## 系统要求
 
-- Intel Mac：macOS 10.15 Catalina 或更高版本。
-- Apple Silicon Mac：macOS 11 Big Sur 或更高版本。
+- Apple Silicon Mac：macOS 13 Ventura 或更高版本。
+- 此开发整合版仅构建 arm64。
 - 推荐接电源使用。
 
 ## 说明

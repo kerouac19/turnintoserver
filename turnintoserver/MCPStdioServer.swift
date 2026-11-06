@@ -202,7 +202,7 @@ final class MCPStdioServer {
     }
 
     init(socketPath: String = MCPStdioServer.defaultSocketPath()) {
-        self.socketPath = ProcessInfo.processInfo.environment["TURNINTOSERVER_CONTROL_SOCKET"] ?? socketPath
+        self.socketPath = ProcessInfo.processInfo.environment[AppIdentity.current.socketEnvironmentKey] ?? socketPath
     }
 
     func run() {
@@ -615,7 +615,7 @@ final class MCPStdioServer {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        .appendingPathComponent("turnintoserver", isDirectory: true)
+        .appendingPathComponent(AppIdentity.current.supportDirectoryName, isDirectory: true)
 
         return directory.appendingPathComponent("mcp-control.sock").path
     }
