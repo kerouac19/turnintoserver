@@ -1,0 +1,30 @@
+RELEASING.md
+  h_af5fc21353744c 104-113
+Tests/IntegrationTests.swift
+  h_af5fc21353744c 3,45-62,65,76-124
+docs/INTEGRATION_STATUS.md
+  h_af5fc21353744c 33-34
+docs/SERVER_MODE_STARTUP_FIX.md
+  h_af5fc21353744c 1-57
+scripts/diagnose-server-mode.py
+  h_af5fc21353744c 1-95
+scripts/test.sh
+  h_af5fc21353744c 19
+turnintoserver.xcodeproj/project.pbxproj
+  h_af5fc21353744c 39,75,112,226
+turnintoserver/PowerGuard/PowerGuardServiceReadiness.swift
+  h_af5fc21353744c 1-67
+turnintoserver/PowerGuard/PowerSessionGuard.swift
+  h_af5fc21353744c 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b5377cb6fa55896b6add613d109ca09ff24eee1",
+  "prompts": {},
+  "humans": {
+    "h_af5fc21353744c": {
+      "author": "kerouac19 <kerouac19@gmail.com>"
+    }
+  }
+}
