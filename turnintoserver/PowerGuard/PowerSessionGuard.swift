@@ -314,11 +314,7 @@ final class PowerSessionGuardClient {
 
     func begin() async throws {
         if token != nil { try await restore() }
-        if service.status == .notRegistered { try service.register() }
-        guard service.status == .enabled else {
-            throw PowerGuardFailure(message: AppIdentity.text("请在系统设置的登录项中允许开发版电源看护后台运行",
-                "Allow the development power guard in System Settings → Login Items"))
-        }
+        try PowerGuardServiceReadiness.ensureReady(service)
         _ = try await mailbox.exchange(.ping)
         // Non-mutating sudo policy checks happen before preparing or changing state.
         for value in ["0", "1"] {

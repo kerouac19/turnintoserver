@@ -16,5 +16,6 @@ xcrun swiftc -parse-as-library -swift-version 5 -target arm64-apple-macos13 \
   turnintoserver/CleaningMode/CleaningHealthMonitor.swift \
   turnintoserver/PowerGuard/PowerLeaseEngine.swift \
   turnintoserver/PowerGuard/LeaseContactMonitor.swift \
+  turnintoserver/PowerGuard/PowerGuardServiceReadiness.swift \
   Tests/IntegrationTests.swift -o "$TEST_ROOT/integration-tests"
 "$TEST_ROOT/integration-tests"

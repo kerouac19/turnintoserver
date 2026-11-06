@@ -1,5 +1,6 @@
 import Foundation
 import CoreFoundation
+import ServiceManagement
 
 private var checks = 0
 private func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -41,8 +42,27 @@ private final class MemoryPowerBackend: PowerLeaseBackend {
     }
 }
 
+@MainActor
+private final class TestGuardService: PowerGuardServiceRegistering {
+    var status: SMAppService.Status
+    var registrationCount = 0
+    var afterRegistration: SMAppService.Status
+    var registrationError: Error?
+    init(status: SMAppService.Status, afterRegistration: SMAppService.Status = .enabled, error: Error? = nil) {
+        self.status = status
+        self.afterRegistration = afterRegistration
+        self.registrationError = error
+    }
+    func register() throws {
+        registrationCount += 1
+        status = afterRegistration
+        if let registrationError { throw registrationError }
+    }
+}
+
 @main @MainActor enum IntegrationTests {
     static func main() throws {
+        try backgroundServiceRegistration()
         identityAndRoutes()
         routeStartupDoesNotTouchNetwork()
         displayPolicy()
@@ -51,6 +71,55 @@ private final class MemoryPowerBackend: PowerLeaseBackend {
         contactFailureStopsRenewal()
         try powerRecovery()
         print("PASS: \(checks) checks (no hardware, power, routing or permission changes)")
+    }
+
+    static func backgroundServiceRegistration() throws {
+        let missingRecord = TestGuardService(status: .notFound)
+        try PowerGuardServiceReadiness.ensureReady(missingRecord)
+        expect(missingRecord.registrationCount == 1, "missing background record must attempt registration")
+        expect(missingRecord.status == .enabled, "Server Mode may continue when registration becomes enabled")
+
+        let firstInstall = TestGuardService(status: .notRegistered)
+        try PowerGuardServiceReadiness.ensureReady(firstInstall)
+        expect(firstInstall.registrationCount == 1, "first install registers exactly once")
+        let enabled = TestGuardService(status: .enabled)
+        try PowerGuardServiceReadiness.ensureReady(enabled)
+        expect(enabled.registrationCount == 0, "enabled service is not registered again")
+
+        let denied = TestGuardService(status: .requiresApproval)
+        do {
+            try PowerGuardServiceReadiness.ensureReady(denied)
+            fatalError("FAIL: user approval is required")
+        } catch PowerGuardServiceStartupFailure.requiresApproval { checks += 1 }
+        expect(denied.registrationCount == 0, "do not reregister a user-disabled service")
+
+        let pending = TestGuardService(status: .notRegistered, afterRegistration: .requiresApproval)
+        do {
+            try PowerGuardServiceReadiness.ensureReady(pending)
+            fatalError("FAIL: registration alone must not imply approval")
+        } catch PowerGuardServiceStartupFailure.requiresApproval { checks += 1 }
+        expect(pending.registrationCount == 1, "approval pending after a single registration")
+
+        let stillMissing = TestGuardService(status: .notFound, afterRegistration: .notFound)
+        do {
+            try PowerGuardServiceReadiness.ensureReady(stillMissing)
+            fatalError("FAIL: do not continue without a ready guard")
+        } catch PowerGuardServiceStartupFailure.notReady(let status) {
+            expect(status == .notFound, "missing service remains a registration error, not an approval instruction")
+        }
+        expect(stillMissing.registrationCount == 1, "missing registration does not enter an infinite retry loop")
+
+        let underlying = NSError(domain: "SMAppServiceErrorDomain", code: 1,
+                                 userInfo: [NSLocalizedDescriptionKey: "No app found to register"])
+        let broken = TestGuardService(status: .notFound, afterRegistration: .notFound, error: underlying)
+        do {
+            try PowerGuardServiceReadiness.ensureReady(broken)
+            fatalError("FAIL: framework registration error must be retained")
+        } catch PowerGuardServiceStartupFailure.registrationFailed(let error) {
+            expect(error.domain == underlying.domain && error.code == underlying.code,
+                   "preserve framework domain and code instead of masking with permission advice")
+            expect(error.localizedDescription == underlying.localizedDescription, "preserve actual framework failure detail")
+        }
     }
 
     static func identityAndRoutes() {

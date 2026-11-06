@@ -36,6 +36,7 @@
 		B00000000000000000000002 = {isa = PBXBuildFile; fileRef = B00000000000000000000001; };
 		28A84A262E81FDF8299509A8 = {isa = PBXBuildFile; fileRef = 9AF1FB5416AA943C7619A202; };
 		8EAE105ACEACE2F23F72D6D4 = {isa = PBXBuildFile; fileRef = 0A3CF8198BA9414FF8626893; };
+		DD0000000000000000000001 = {isa = PBXBuildFile; fileRef = DD0000000000000000000002; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -71,6 +72,7 @@
 		B00000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "PowerGuard/com.local.macutils.turnintoserver.dev.power-guard.plist"; sourceTree = "<group>"; };
 		9AF1FB5416AA943C7619A202 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CleaningMode/CleaningHealthMonitor.swift"; sourceTree = "<group>"; };
 		0A3CF8198BA9414FF8626893 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PowerGuard/LeaseContactMonitor.swift"; sourceTree = "<group>"; };
+		DD0000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PowerGuard/PowerGuardServiceReadiness.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -107,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				0A3CF8198BA9414FF8626893,
+				DD0000000000000000000002,
 				9AF1FB5416AA943C7619A202,
 				B00000000000000000000001,
 				5FAD19967B0649B406E8126E,
@@ -220,6 +223,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DD0000000000000000000001,
 				8EAE105ACEACE2F23F72D6D4,
 				28A84A262E81FDF8299509A8,
 				A4716D0886288D5DB8D09631,

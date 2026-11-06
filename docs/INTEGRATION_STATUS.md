@@ -30,6 +30,8 @@
 
 分发流程补齐后的验证：新增 11 项分发测试及原有 80 项检查均通过。已生成 `dist/turnintoserver-dev-0.1.0-b1-arm64-adhoc.zip`，完成 Release 编译、包结构与 entitlements 检查、SHA-256、解压后签名校验及 MCP 初始化（版本 `0.1.0 (1)`）。这是未经公证的测试包；未替换原 `build-dev/` 产物。Developer ID 签名、真实公证与接收端首次安装仍待证书、凭据和另一台 Mac 验证。方案和证据见 [分发方案](DISTRIBUTION_PLAN.md) 与 [Apple 官方资料核查](DISTRIBUTION_SIGNING_RESEARCH.md)。
 
+用户后续报告 `0.1.0 (1)` 无法开启 Server Mode，实际失败与后台看护注册有关。已修复 `.notFound` 跳过注册且所有失败均误报待批准的问题，并保留框架实际错误；92 项检查及 11 项分发测试通过。用户安装 `0.1.1 (2)` 后实机复测通过：Server Mode 实际开启、接电启动成功，看护处于 `running`。该 Mac 的启动故障已关闭；其他恢复和系统版本专项继续单独验收。详见 [启动问题记录](SERVER_MODE_STARTUP_FIX.md)。
+
 在当前受限执行环境中构建：
 
 ```sh

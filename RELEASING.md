@@ -101,3 +101,13 @@ ZIP 包含 App、`INSTALL.md`、`THIRD_PARTY_NOTICES.md`、`Licenses/` 与 `buil
 当前打包不更改 Bundle ID、后台项 Label 或配置目录。更换长期身份时须同步工程、`ApplicationIdentity`、LaunchAgent 名称/关联标识、`SMAppService.agent(plistName:)` 和测试，并设计既有配置与租约迁移。签名身份变化后重新验证权限连续性。
 
 替换用户正在使用的 App 前，先关闭 Server Mode 并退出，等待恢复与后台项注销完成；构建脚本不会停止或重启运行中的 App。
+
+## Server Mode 启动诊断
+
+在已安装并运行菜单栏 App 的本机终端执行：
+
+```sh
+python3 scripts/diagnose-server-mode.py --reproduce
+```
+
+按提示点击 Start Server Mode，再回终端按 Enter。报告默认保存到 `build-dev/diagnostics/server-mode.json`，包含受限的 App 状态和相关启动日志，不包含内存历史或网络配置。脚本不会更改电源、注册服务或代替用户授权。退出码 `0` 为实际开启，`1` 为读到未开启，`2` 为无法读取 App 的状态。可通过 `--app`、`--output` 指定安装位置和报告文件。
